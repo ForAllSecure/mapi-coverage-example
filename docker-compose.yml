@@ -1,0 +1,9 @@
+# Starts the REST API
+version: "3"
+services:
+  server:
+    build: .
+    ports:
+      - 8000:8000
+    environment:
+      FASTAPI_ENV: test
