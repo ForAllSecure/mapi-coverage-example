@@ -1,9 +1,38 @@
-# Starts the REST API
+# Starts the REST API with a postgres connection
 version: "3"
 services:
+  #
+  # The REST API runs on port 8000 by default.
+  #
+  # The OpenAPI schema is available from
+  # http://localhost:8000/openapi.json
+  #
   server:
     build: .
     ports:
       - 8000:8000
     environment:
       FASTAPI_ENV: test
+      DATABASE_URI: postgresql://postgres:password@postgresql:5432/resourcedb
+    depends_on:
+      - postgresql
+    links:
+      - postgresql
+
+  #
+  # The Database used by the REST API to persist
+  # resources.
+  #
+  postgresql:
+    image: postgres:12-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=resourcedb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5

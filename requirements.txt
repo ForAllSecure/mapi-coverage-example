@@ -1,3 +1,5 @@
 fastapi[all]
+fastapi_pagination
 databases
 aiosqlite
+psycopg2
