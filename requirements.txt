@@ -1,5 +1,6 @@
-fastapi[all]
-fastapi_pagination
-databases
-aiosqlite
-psycopg2
+aiosqlite==0.3.0
+databases==0.6.0
+fastapi==0.79.0
+fastapi_pagination==0.9.3
+uvicorn[standard]==0.18.2
+psycopg2==2.9.3

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import StaticPool, QueuePool
 from typing_extensions import Required
 
 '''
@@ -70,7 +70,9 @@ def create_sql_engine():
             poolclass=StaticPool
         )
     print(f"Running with database {db_uri}")
-    return create_engine(db_uri)
+    return create_engine(
+            db_uri,
+            poolclass=QueuePool)
 
 
 engine = create_sql_engine()
@@ -93,7 +95,9 @@ def get_db():
 FastAPI initialization
 '''
 
-app = FastAPI()
+app = FastAPI(
+    title="Mayhem for API coverage guided fuzzing demo"
+)
 
 # In dev & testing only, include the stacktrace in the response on internal
 # server errors
@@ -166,7 +170,7 @@ def get_resources(
 
 @app.get("/resources/{resource_id}/widgets/", response_model=Page[WidgetSchema])
 def get_all_resource_widgets(
-    resource_id: str = Path(title= "Resource to get widgets for"),
+    resource_id,
     db: Session = Depends(get_db),
     params: Params = Depends()
 ):
@@ -212,24 +216,17 @@ def deactivate_resource_widget(
 @app.post("/resources/{source_resource_id}/transfer_inactive_widgets/")
 def transfer_inactive_widgets(
     source_resource_id: str,
-    target_resource_id: Union[str, None] = Query(),
+    target_resource_id: Union[str, None] = Query(default=None),
     db: Session = Depends(get_db)
 ):
     source_resource = db.get(Resource, source_resource_id)
     if not source_resource:
         raise HTTPException(status_code=404, detail=f"No resource found for id:{source_resource_id}")
 
+    num_transferred = 0
     for widget in db.query(Widget).filter(Widget.resource_id == source_resource_id).all():
-        db.execute(f"UPDATE widgets SET resource_id='{target_resource_id}' \
-                WHERE id = '{widget.id}' AND active = false")
-    return f"records transferred"
-
-# @app.post("/resources/{source_resource_id}/transfer_all_widgets/")
-# def unsafe_transfer_all_widgets(
-#     source_resource_id: str,
-#     target_resource_id: Union[str, None] = Query(),
-#     db: Session = Depends(get_db)
-# ):
-#     db.execute(f"UPDATE widgets SET resource_id='{target_resource_id}' \
-#                  WHERE id = '{source_resource_id}'")
-#     return "Some widgets transferred"
+        if not widget.active:
+            db.execute(f"UPDATE widgets SET resource_id='{target_resource_id}' \
+                 WHERE id = '{widget.id}'")
+            num_transferred += 1
+    return f"{num_transferred} records transferred"
